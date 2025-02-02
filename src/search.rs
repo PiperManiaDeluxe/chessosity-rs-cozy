@@ -72,12 +72,12 @@ pub fn search_best_move(
         };
 
         println!(
-            "info depth {} score cp {} nodes {} time {} nps {} bestmove {}",
+            "info depth {} score cp {} nodes {} nps {} time {} bestmove {}",
             depth,
             best_move.score,
             nodes,
-            elapsed_ms,
             nodes_per_s.to_formatted_string(&Locale::fa),
+            elapsed_ms,
             best_move.mv.unwrap_or_else(|| Move::from_str("a1a1").unwrap())
         );
 
