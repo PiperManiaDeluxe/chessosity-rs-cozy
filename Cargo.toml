@@ -2,7 +2,7 @@
 name = "chessosity-rs-cozy"
 # (Major update version).(Evaluation function update version).(Bugfix / patch version)
 # TODO: Update version every commit
-version = "1.0.3"
+version = "1.0.4"
 edition = "2021"
 
 [dependencies]

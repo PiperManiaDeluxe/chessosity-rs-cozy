@@ -76,7 +76,7 @@ pub fn search_best_move(
             depth,
             best_move.score,
             nodes,
-            nodes_per_s.to_formatted_string(&Locale::fa),
+            nodes_per_s,
             elapsed_ms,
             best_move.mv.unwrap_or_else(|| Move::from_str("a1a1").unwrap())
         );
