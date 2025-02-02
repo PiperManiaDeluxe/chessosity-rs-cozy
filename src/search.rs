@@ -72,7 +72,7 @@ pub fn search_best_move(
         };
 
         println!(
-            "info depth {} score {} nodes {} time {}ms nps {} bestmove {}",
+            "info depth {} score cp {} nodes {} time {}ms nps {} bestmove {}",
             depth,
             best_move.score,
             nodes,
