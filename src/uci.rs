@@ -56,6 +56,25 @@ pub fn do_uci_loop() {
                 let mut black_inc: u64 = 2 * 1000;
 
                 if tokens.len() > 1 {
+                    if tokens[1] == "infinite" {
+                        let is_going_clone = Arc::clone(&is_going);
+                        go_thread = Some(std::thread::spawn(move || {
+                            let best_move = search_best_move(&new_board, 0, 64, &is_going_clone);
+                            println!("bestmove {}", best_move.mv.unwrap().to_string());
+                        }));
+                        continue;
+                    }
+
+                    if tokens[1] == "depth" {
+                        let depth = tokens.get(2).and_then(|s| s.parse().ok()).unwrap_or(5);
+                        let is_going_clone = Arc::clone(&is_going);
+                        let go_thread = Some(std::thread::spawn(move || {
+                            let best_move = search_best_move(&new_board, 0, depth, &is_going_clone);
+                            println!("bestmove {}", best_move.mv.unwrap().to_string());
+                        }));
+                        continue;
+                    }
+
                     for i in 1..tokens.len() {
                         let argument = tokens[i];
                         if argument == "wtime" {

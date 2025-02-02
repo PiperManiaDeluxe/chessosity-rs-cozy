@@ -8,10 +8,10 @@
     time::Instant,
 };
 
-use cozy_chess::{Board, Color, GameStatus, Move};
-use num_format::{Locale, ToFormattedString};
-
 use crate::eval::eval;
+use cozy_chess::{Board, Color, GameStatus, Move};
+use num_format::Locale::bo;
+use num_format::{Locale, ToFormattedString};
 
 pub struct MoveScore {
     pub score: i32,
@@ -45,10 +45,13 @@ pub fn search_best_move(
     let mut nodes: u64 = 0;
     let mut transposition_table: HashMap<u64, CacheEntry> = HashMap::new();
 
-    while Instant::now().duration_since(start).as_millis() < time_limit as u128
-        && depth <= max_depth
+    while depth <= max_depth
         && is_going.load(SeqCst)
     {
+        if (time_limit > 0 && start.elapsed().as_millis() > time_limit as u128) {
+            break;
+        }
+
         match minimax(
             board,
             depth,
@@ -78,7 +81,9 @@ pub fn search_best_move(
             nodes,
             nodes_per_s,
             elapsed_ms,
-            best_move.mv.unwrap_or_else(|| Move::from_str("a1a1").unwrap())
+            best_move
+                .mv
+                .unwrap_or_else(|| Move::from_str("a1a1").unwrap())
         );
 
         depth += 1;
@@ -98,7 +103,11 @@ fn minimax(
     transposition_table: &mut HashMap<u64, CacheEntry>,
     is_going: &Arc<AtomicBool>,
 ) -> Result<MoveScore, ()> {
-    if start_time.elapsed().as_millis() > time_limit as u128 || !is_going.load(SeqCst) {
+    if !is_going.load(SeqCst) {
+        return Err(());
+    }
+
+    if (time_limit > 0 && start_time.elapsed().as_millis() > time_limit as u128) {
         return Err(());
     }
 
@@ -107,6 +116,149 @@ fn minimax(
     let original_alpha = alpha;
     let original_beta = beta;
 
+    if let Some(tt_entry) = transposition_table.get(&board.hash()) {
+        if tt_entry.depth >= depth && depth > 0 {
+            match tt_entry.bound {
+                SearchBound::Exact => {
+                    return Ok(MoveScore {
+                        score: tt_entry.val,
+                        mv: tt_entry.chess_move,
+                    })
+                }
+                SearchBound::Lower => alpha = alpha.max(tt_entry.val),
+                SearchBound::Upper => beta = beta.min(tt_entry.val),
+            }
+            if alpha >= beta {
+                return Ok(MoveScore {
+                    score: tt_entry.val,
+                    mv: tt_entry.chess_move,
+                });
+            }
+        }
+    }
+
+    if board.status() != GameStatus::Ongoing {
+        return Ok(MoveScore {
+            score: eval(board),
+            mv: None,
+        });
+    }
+
+    if depth == 0 {
+        return mini_max_capture(
+            board,
+            depth,
+            alpha,
+            beta,
+            start_time,
+            time_limit,
+            nodes,
+            transposition_table,
+            is_going,
+        );
+    }
+
+    let mut best_move = MoveScore {
+        score: match board.side_to_move() {
+            Color::White => i32::MIN,
+            Color::Black => i32::MAX,
+        },
+        mv: None,
+    };
+
+    board.generate_moves(|moves| {
+        for mv in moves {
+            let mut new_board = board.clone();
+            new_board.play(mv);
+            let score = minimax(
+                &new_board,
+                depth - 1,
+                alpha,
+                beta,
+                start_time,
+                time_limit,
+                nodes,
+                transposition_table,
+                is_going,
+            );
+
+            if let Err(()) = score {
+                return true;
+            }
+            let score = score.unwrap().score;
+
+            match board.side_to_move() {
+                Color::White => {
+                    if score > best_move.score {
+                        best_move.score = score;
+                        best_move.mv = Some(mv);
+                    }
+                    if score >= beta {
+                        break;
+                    }
+                    alpha = alpha.max(score);
+                }
+                Color::Black => {
+                    if score < best_move.score {
+                        best_move.score = score;
+                        best_move.mv = Some(mv);
+                    }
+                    if score <= alpha {
+                        break;
+                    }
+                    beta = beta.min(score);
+                }
+            }
+        }
+        false
+    });
+
+    let bound = if best_move.score <= original_alpha {
+        SearchBound::Upper
+    } else if best_move.score >= original_beta {
+        SearchBound::Lower
+    } else {
+        SearchBound::Exact
+    };
+
+    transposition_table.insert(
+        board.hash(),
+        CacheEntry {
+            val: best_move.score,
+            depth,
+            bound,
+            chess_move: best_move.mv,
+        },
+    );
+
+    Ok(best_move)
+}
+
+pub fn mini_max_capture(
+    board: &Board,
+    depth: u8,
+    mut alpha: i32,
+    mut beta: i32,
+    start_time: Instant,
+    time_limit: u64,
+    nodes: &mut u64,
+    transposition_table: &mut HashMap<u64, CacheEntry>,
+    is_going: &Arc<AtomicBool>,
+) -> Result<MoveScore, ()> {
+    if !is_going.load(SeqCst) {
+        return Err(());
+    }
+
+    if (time_limit > 0 && start_time.elapsed().as_millis() > time_limit as u128) {
+        return Err(());
+    }
+
+    *nodes += 1;
+
+    let original_alpha = alpha;
+    let original_beta = beta;
+
+    // TODO: remove duplicate code
     if let Some(tt_entry) = transposition_table.get(&board.hash()) {
         if tt_entry.depth >= depth && depth > 0 {
             match tt_entry.bound {
@@ -143,11 +295,33 @@ fn minimax(
         mv: None,
     };
 
+    let eval = eval(board);
+    if (board.side_to_move() == Color::White) {
+        if eval >= beta {
+            return Ok(MoveScore {
+                score: eval,
+                mv: None,
+            });
+        }
+    } else {
+        if eval <= alpha {
+            return Ok(MoveScore {
+                score: eval,
+                mv: None,
+            });
+        }
+    }
+
     board.generate_moves(|moves| {
         for mv in moves {
+            // Skip non-captures
+            if !board.piece_on(mv.to).is_some() {
+                continue;
+            }
+
             let mut new_board = board.clone();
             new_board.play(mv);
-            let score = minimax(
+            let score = mini_max_capture(
                 &new_board,
                 depth - 1,
                 alpha,
@@ -158,12 +332,12 @@ fn minimax(
                 transposition_table,
                 is_going,
             );
-
             if let Err(()) = score {
                 return true;
             }
             let score = score.unwrap().score;
 
+            // TODO: duplicate code
             match board.side_to_move() {
                 Color::White => {
                     if score > best_move.score {

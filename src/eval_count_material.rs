@@ -1,4 +1,5 @@
 ﻿use cozy_chess::{Board, Color, Piece};
+use num_format::Locale::bo;
 
 pub fn eval_count_material(board: &Board) -> i32{
     let mut score: i32 = 0;
@@ -13,16 +14,27 @@ pub fn eval_count_material(board: &Board) -> i32{
     let black_rooks = board.colored_pieces(Color::Black, Piece::Rook);
     let black_queens = board.colored_pieces(Color::Black, Piece::Queen);
 
-    score += white_pawns.len() as i32 * 100;
-    score += white_knights.len() as i32 * 300;
-    score += white_bishops.len() as i32 * 300;
-    score += white_rooks.len() as i32 * 500;
-    score += white_queens.len() as i32 * 900;
-    score -= black_pawns.len() as i32 * 100;
-    score -= black_knights.len() as i32 * 300;
-    score -= black_bishops.len() as i32 * 300;
-    score -= black_rooks.len() as i32 * 500;
-    score -= black_queens.len() as i32 * 900;
+    score += white_pawns.len() as i32 * get_piece_value(Piece::Pawn);
+    score += white_knights.len() as i32 * get_piece_value(Piece::Knight);
+    score += white_bishops.len() as i32 * get_piece_value(Piece::Bishop);
+    score += white_rooks.len() as i32 * get_piece_value(Piece::Rook);
+    score += white_queens.len() as i32 * get_piece_value(Piece::Queen);
+    score -= black_pawns.len() as i32 * get_piece_value(Piece::Pawn);
+    score -= black_knights.len() as i32 * get_piece_value(Piece::Knight);
+    score -= black_bishops.len() as i32 * get_piece_value(Piece::Bishop);
+    score -= black_rooks.len() as i32 * get_piece_value(Piece::Rook);
+    score -= black_queens.len() as i32 * get_piece_value(Piece::Queen);
 
     score
+}
+
+pub fn get_piece_value(piece: Piece) -> i32 {
+    match piece {
+        Piece::Pawn => 100,
+        Piece::Knight => 300,
+        Piece::Bishop => 300,
+        Piece::Rook => 500,
+        Piece::Queen => 900,
+        _ => 0,
+    }
 }
