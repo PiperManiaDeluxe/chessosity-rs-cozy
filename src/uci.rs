@@ -1,13 +1,13 @@
-﻿use crate::perft::perft;
+﻿use crate::eval_count_material::eval_count_material;
+use crate::perft::perft;
+use crate::search::search_best_move;
+use crate::time_manager::manage_time;
 use cozy_chess::{Board, Color};
 use num_format::{Locale, ToFormattedString};
 use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
 use std::sync::atomic::Ordering::SeqCst;
+use std::sync::Arc;
 use std::time::Instant;
-use crate::eval_count_material::eval_count_material;
-use crate::search::search_best_move;
-use crate::time_manager::manage_time;
 
 pub fn do_uci_loop() {
     let mut board = Board::default();
@@ -83,12 +83,8 @@ pub fn do_uci_loop() {
                     println!("info time limit for move: {}ms", time_limit);
 
                     let max_depth: u8 = 64;
-                    let best_move = search_best_move(
-                        &new_board,
-                        time_limit,
-                        max_depth,
-                        &is_going_clone,
-                    );
+                    let best_move =
+                        search_best_move(&new_board, time_limit, max_depth, &is_going_clone);
                     println!("bestmove {}", best_move.mv.unwrap().to_string());
                 }));
             }
@@ -98,8 +94,8 @@ pub fn do_uci_loop() {
 
                     if tokens.len() > 2 && tokens[2] == "moves" {
                         for &mv in &tokens[3..] {
-                            let chess_move = mv.parse().unwrap();
-                            board.play(chess_move);
+                            let mv_chess = cozy_chess::util::parse_uci_move(&board, mv).unwrap();
+                            board.play(mv_chess);
                         }
                     }
                 } else if tokens[1] == "fen" {
@@ -107,8 +103,8 @@ pub fn do_uci_loop() {
                     board = Board::from_fen(&fen, false).unwrap();
                 } else if tokens[1] == "moves" {
                     for &mv in &tokens[2..] {
-                        let chess_move = mv.parse().unwrap();
-                        board.play(chess_move);
+                        let mv_chess = cozy_chess::util::parse_uci_move(&board, mv).unwrap();
+                        board.play(mv_chess);
                     }
                 }
             }
