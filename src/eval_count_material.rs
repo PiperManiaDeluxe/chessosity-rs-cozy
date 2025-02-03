@@ -1,5 +1,4 @@
 ﻿use cozy_chess::{Board, Color, Piece};
-use num_format::Locale::bo;
 
 pub fn eval_count_material(board: &Board) -> i32{
     let mut score: i32 = 0;
