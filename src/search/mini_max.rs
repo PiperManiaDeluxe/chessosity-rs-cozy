@@ -1,10 +1,11 @@
 ﻿use crate::eval::eval::eval;
 use crate::search::is_threefold::is_threefold;
+use crate::search::order_moves::order_moves;
 use crate::search::quiescence::quiescence;
 use crate::search::transposition_table::{
     TranspositionTable, TranspositionTableEntry, TranspositionTableEntryType,
 };
-use cozy_chess::{Board, Color, GameStatus, Move};
+use cozy_chess::{BitBoard, Board, BoardBuilder, Color, GameStatus, Move};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -55,8 +56,11 @@ pub fn mini_max(
     let mut moves = Vec::new();
     board.generate_moves(|mvs| {
         moves.extend(mvs);
+
         false
     });
+
+    moves = order_moves(&board, moves);
 
     let mut best_score = if maximizing { i32::MIN } else { i32::MAX };
     let mut best_move: Option<Move> = None;
