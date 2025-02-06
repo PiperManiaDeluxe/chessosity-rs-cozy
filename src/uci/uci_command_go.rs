@@ -1,4 +1,5 @@
-﻿use crate::search::mini_max::mini_max;
+﻿use std::collections::HashMap;
+use crate::search::mini_max::mini_max;
 use crate::search::transposition_table::TranspositionTable;
 use crate::uci::uci_loop::UciData;
 use cozy_chess::{Color, Move};
@@ -16,7 +17,7 @@ pub fn set_go_timer(is_playing: &Arc<AtomicBool>, time: u64) {
     });
 }
 
-pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
+pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>, transposition_table: &mut TranspositionTable) {
     let mut max_depth = 64;
     let mut time = 0;
 
@@ -78,24 +79,23 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
 
     let start = Instant::now();
 
-    let mut tt = TranspositionTable::new();
-
     let mut last_time: u64 = 0;
 
     while current_depth <= max_depth
         && uci_data
-            .is_playing
-            .load(std::sync::atomic::Ordering::SeqCst)
+        .is_playing
+        .load(std::sync::atomic::Ordering::SeqCst)
     {
         // Estimate the next depth will take 10 times longer, if we don't have the time for that stop here to save time during play!
         if last_time * 10 > time && time > 0 {
             break;
         }
 
+        let mut killer_moves: HashMap<u8, Vec<Move>> = HashMap::new();
         let new_board = uci_data.board.clone();
         let (score, mv, early_stop, pv) = mini_max(
             &new_board,
-            &mut tt,
+            &mut *transposition_table,
             uci_data.current_move_history.clone(),
             current_depth,
             i32::MIN,
@@ -103,6 +103,7 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
             0,
             &uci_data.is_playing,
             &mut node_count,
+            &mut killer_moves
         );
 
         if early_stop {

@@ -1,61 +1,42 @@
 ﻿use crate::eval::eval_count_material::get_piece_value;
 use cozy_chess::{BitBoard, Board, Move};
+use std::collections::{HashMap, HashSet};
 
-pub fn order_moves(board: &Board, moves: Vec<Move>) -> Vec<Move> {
-    let mut ordered_moves = moves.clone();
+pub fn order_moves(board: &Board, moves: Vec<Move>, killer_moves: &HashSet<Move>) -> Vec<Move> {
+    let mut moves_with_scores: Vec<(Move, i32)> = moves
+        .into_iter()
+        .map(|mv| {
+            let score = move_order_score(board, &mv, killer_moves);
+            (mv, score)
+        })
+        .collect();
 
-    ordered_moves.sort_by(|a, b| {
-        // Prioritize captures
-        let is_a_capture = board.piece_on(a.to).is_some();
-        let is_b_capture = board.piece_on(b.to).is_some();
+    // Sort descending: highest score first.
+    moves_with_scores.sort_by(|a, b| b.1.cmp(&a.1));
 
-        if is_a_capture && !is_b_capture {
-            return std::cmp::Ordering::Less;
-        } else if !is_a_capture && is_b_capture {
-            return std::cmp::Ordering::Greater;
-        } else if is_a_capture && is_b_capture {
-            // If both are captures, prioritize the capture that cant be recaptured
-            let mut a_can_be_recaptured = false;
-            let mut b_can_be_recaptured = false;
+    // Return the sorted moves.
+    moves_with_scores.into_iter().map(|(mv, _)| mv).collect()
+}
 
-            // Play A and see if it can be recaptured
-            let mut board_a = board.clone();
-            board_a.play_unchecked(*a);
+pub fn move_order_score(board: &Board, mv: &Move, killer_moves: &HashSet<Move>) -> i32 {
+    let mut score = 0;
 
-            board_a.generate_moves(|mvs| {
-                if mvs.into_iter().any(|m| m.to == a.to) {
-                    a_can_be_recaptured = true;
-                    return true;
-                }
-                false
-            });
+    // Give a very big bonus for killer moves
+    if killer_moves.contains(mv) {
+        score += 1_000_000;
+    }
 
-            // Play B and see if it can be recaptured
-            let mut board_b = board.clone();
-            board_b.play_unchecked(*b);
-            board_b.generate_moves(|mvs| {
-                if mvs.into_iter().any(|m| m.to == b.to) {
-                    b_can_be_recaptured = true;
-                    return true;
-                }
-                false
-            });
+    // If the move is a capture add a bonus
+    if let Some(captured_piece) = board.piece_on(mv.to) {
+        let victim_value = get_piece_value(captured_piece);
+        let attacker_value = get_piece_value(board.piece_on(mv.from).unwrap());
+        score += victim_value * 10 - attacker_value;
+    }
 
-            if a_can_be_recaptured && !b_can_be_recaptured {
-                return std::cmp::Ordering::Greater;
-            } else if !a_can_be_recaptured && b_can_be_recaptured {
-                return std::cmp::Ordering::Less;
-            }
+    // If the move leads to check add a bonus
+    let mut move_board = board.clone();
+    move_board.play_unchecked(*mv);
+    score += move_board.checkers().len() as i32 * 100_000;
 
-            // If both have the same recapture status, prioritize the capture with the higher material delta
-            let a_capture_value = get_piece_value(board.piece_on(a.to).unwrap());
-            let b_capture_value = get_piece_value(board.piece_on(b.to).unwrap());
-
-            return b_capture_value.cmp(&a_capture_value);
-        }
-
-        return std::cmp::Ordering::Equal;
-    });
-
-    ordered_moves
+    score
 }

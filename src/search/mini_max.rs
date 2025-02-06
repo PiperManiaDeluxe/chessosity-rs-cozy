@@ -6,6 +6,7 @@ use crate::search::transposition_table::{
     TranspositionTable, TranspositionTableEntry, TranspositionTableEntryType,
 };
 use cozy_chess::{BitBoard, Board, BoardBuilder, Color, GameStatus, Move};
+use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -19,6 +20,7 @@ pub fn mini_max(
     distance_from_root: u8,
     is_playing: &Arc<AtomicBool>,
     node_count: &mut u64,
+    killer_moves: &mut HashMap<u8, Vec<Move>>,
 ) -> (i32, Option<Move>, bool, Vec<Move>) {
     let mut best_pv: Vec<Move> = Vec::new();
 
@@ -27,29 +29,42 @@ pub fn mini_max(
     }
 
     let hash = board.hash();
-    if let Some(&ref entry) = transposition_table.get(hash) {
+    // TT lookup: if an entry exists and its depth is sufficient, try to cut off.
+    if let Some(entry) = transposition_table.get(hash) {
         if entry.depth >= depth && depth > 0 {
             match entry.entry_type {
                 TranspositionTableEntryType::Exact => {
-                    // ignore entries that count as mate
+                    // Exact values can be returned immediately.
                     if entry.score.abs() < 900_000 {
                         return (entry.score, entry.best_move, false, entry.pv.clone());
                     }
                 }
-                TranspositionTableEntryType::LowerBound => alpha = alpha.max(entry.score),
-                TranspositionTableEntryType::UpperBound => beta = beta.min(entry.score)
+                TranspositionTableEntryType::LowerBound => {
+                    // If the TT says the score is at least a lower bound and that lower bound is ≥ β,
+                    // we can return immediately.
+                    if entry.score >= beta {
+                        return (entry.score, entry.best_move, false, entry.pv.clone());
+                    }
+                }
+                TranspositionTableEntryType::UpperBound => {
+                    // Similarly, if the TT says the score is at most an upper bound and that bound is ≤ α,
+                    // we can return immediately.
+                    if entry.score <= alpha {
+                        return (entry.score, entry.best_move, false, entry.pv.clone());
+                    }
+                }
             }
         }
     }
 
     if board.status() != GameStatus::Ongoing {
-        return (eval(&board, distance_from_root+1), None, false, best_pv);
+        return (eval(&board, distance_from_root + 1), None, false, best_pv);
     }
     if is_threefold(hash, &hash_history) {
         return (0, None, false, best_pv);
     }
     if depth == 0 {
-        let score = eval(&board, distance_from_root+1);
+        let score = eval(&board, distance_from_root + 1);
 
         if score.abs() < 900000 {
             let score = quiescence(
@@ -77,7 +92,16 @@ pub fn mini_max(
         false
     });
 
-    moves = order_moves(&board, moves);
+    moves = order_moves(
+        &board,
+        moves,
+        &(*killer_moves)
+            .get(&distance_from_root)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .collect(),
+    );
 
     let mut best_score = if maximizing { i32::MIN } else { i32::MAX };
     let mut best_move: Option<Move> = None;
@@ -98,6 +122,7 @@ pub fn mini_max(
             distance_from_root + 1,
             is_playing,
             node_count,
+            &mut *killer_moves,
         );
 
         if early_stop {
@@ -117,6 +142,13 @@ pub fn mini_max(
                 best_pv = current_pv.clone();
             }
             if best_score >= beta {
+                let killer_moves_vec = killer_moves
+                    .entry(distance_from_root)
+                    .or_insert_with(Vec::new);
+                killer_moves_vec.push(mv);
+                if killer_moves_vec.len() > 32 {
+                    killer_moves_vec.remove(0);
+                }
                 break;
             }
             alpha = alpha.max(best_score);
@@ -127,24 +159,31 @@ pub fn mini_max(
                 best_pv = current_pv.clone();
             }
             if best_score <= alpha {
+                let killer_moves_vec = killer_moves
+                    .entry(distance_from_root)
+                    .or_insert_with(Vec::new);
+                killer_moves_vec.push(mv);
+                if killer_moves_vec.len() > 32 {
+                    killer_moves_vec.remove(0);
+                }
                 break;
             }
             beta = beta.min(best_score);
         }
     }
 
-    if let Some(mv) = best_move {
-        let is_mate = best_score.abs() >= 900_000;
-        let entry_type = if is_mate {
-            TranspositionTableEntryType::Exact
-        } else if best_score <= alpha {
-            TranspositionTableEntryType::LowerBound
-        } else if best_score >= beta {
-            TranspositionTableEntryType::UpperBound
-        } else {
-            TranspositionTableEntryType::Exact
-        };
+    // Determine what kind of bound to store in the TT.
+    let entry_type = if best_score.abs() >= 900_000 {
+        TranspositionTableEntryType::Exact
+    } else if best_score <= alpha {
+        TranspositionTableEntryType::UpperBound
+    } else if best_score >= beta {
+        TranspositionTableEntryType::LowerBound
+    } else {
+        TranspositionTableEntryType::Exact
+    };
 
+    if let Some(mv) = best_move {
         transposition_table.insert(
             hash,
             TranspositionTableEntry {
@@ -153,6 +192,7 @@ pub fn mini_max(
                 best_move: Some(mv),
                 entry_type,
                 pv: best_pv.clone(),
+                hash, // Store the hash so we can verify later if needed.
             },
         );
     }
