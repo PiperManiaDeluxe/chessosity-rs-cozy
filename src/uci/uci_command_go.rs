@@ -5,6 +5,7 @@ use cozy_chess::{Color, Move};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Instant;
+use crate::uci::format_move::format_move;
 
 pub fn set_go_timer(is_playing: &Arc<AtomicBool>, time: u64) {
     is_playing.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -105,7 +106,7 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
             best_pv_string = String::new();
             if let Some(pv) = &best_pv {
                 for mv in pv {
-                    best_pv_string.push_str(&format!(" {}", mv));
+                    best_pv_string.push_str(&format!(" {}", format_move(mv, &uci_data.board)));
                 }
             }
             best_pv_string = best_pv_string.trim().to_string();
@@ -125,7 +126,7 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
             node_count,
             nodes_per_s,
             elapsed_ms,
-            best_move.unwrap(),
+            format_move(&best_move.unwrap(), &uci_data.board),
             best_pv_string
         );
 
@@ -133,7 +134,7 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
     }
 
     if let Some(mv) = best_move {
-        println!("bestmove {}", mv);
+        println!("bestmove {}", format_move(&mv, &uci_data.board));
     }
 
     if let Some(timer_handle) = timer_handle {
