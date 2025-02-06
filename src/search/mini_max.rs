@@ -109,11 +109,7 @@ pub fn mini_max(
     let mut i = 0;
 
     for mv in moves {
-        let mut new_board = board.clone();
-        let is_capture = new_board.piece_on(mv.to).is_some();
-        let mut new_hash_history = hash_history.clone();
-        new_board.play(mv);
-        new_hash_history.push(new_board.hash());
+        let is_capture = board.piece_on(mv.to).is_some();
 
         let mut needs_full_search = true;
 
@@ -132,6 +128,11 @@ pub fn mini_max(
                 // Do an even shallower search fo the even later moves
                 reduce_depth = REDUCE_DEPTH_B
             }
+
+            let mut new_board = board.clone();
+            let mut new_hash_history = hash_history.clone();
+            new_board.play(mv);
+            new_hash_history.push(new_board.hash());
 
             let (new_score, _, new_early_stop, new_child_pv) = mini_max(
                 &new_board,
@@ -160,6 +161,11 @@ pub fn mini_max(
         let mut new_hash_history = hash_history.clone();
 
         if needs_full_search{
+            let mut new_board = board.clone();
+            let mut new_hash_history = hash_history.clone();
+            new_board.play(mv);
+            new_hash_history.push(new_board.hash());
+
             let (new_score, _, new_early_stop, new_child_pv) = mini_max(
                 &new_board,
                 transposition_table,
