@@ -19,23 +19,25 @@ pub fn mini_max(
     distance_from_root: u8,
     is_playing: &Arc<AtomicBool>,
     node_count: &mut u64,
-) -> (i32, Option<Move>, bool) {
+) -> (i32, Option<Move>, bool, Vec<Move>) {
+    let mut best_pv: Vec<Move> = Vec::new();
+
     if !is_playing.load(std::sync::atomic::Ordering::SeqCst) {
-        return (0, None, true);
+        return (0, None, true, best_pv);
     }
 
     let hash = board.hash();
-    if let Some(entry) = transposition_table.get(hash) {
+    if let Some(&ref entry) = transposition_table.get(hash) {
         if entry.depth >= depth {
-            return (entry.score, entry.best_move, false);
+            return (entry.score, entry.best_move, false, entry.pv.clone());
         }
     }
 
     if board.status() != GameStatus::Ongoing {
-        return (eval(&board, distance_from_root), None, false);
+        return (eval(&board, distance_from_root), None, false, best_pv);
     }
     if is_threefold(hash, &hash_history) {
-        return (0, None, false);
+        return (0, None, false, best_pv);
     }
     if depth == 0 {
         let score = quiescence(
@@ -47,7 +49,7 @@ pub fn mini_max(
             is_playing,
             node_count,
         );
-        return (score, None, false);
+        return (score, None, false, best_pv);
     }
 
     let maximizing = board.side_to_move() == Color::White;
@@ -71,7 +73,7 @@ pub fn mini_max(
         new_board.play(mv);
         new_hash_history.push(new_board.hash());
 
-        let (score, _, early_stop) = mini_max(
+        let (score, _, early_stop, child_pv) = mini_max(
             &new_board,
             transposition_table,
             new_hash_history,
@@ -84,13 +86,20 @@ pub fn mini_max(
         );
 
         if early_stop {
-            return (0, None, true);
+            return (0, None, true, Vec::new());
         }
+
+        let current_pv = {
+            let mut line = vec![mv];
+            line.extend(child_pv);
+            line
+        };
 
         if maximizing {
             if score > best_score {
                 best_score = score;
                 best_move = Some(mv);
+                best_pv = current_pv.clone();
             }
             if best_score >= beta {
                 break;
@@ -100,6 +109,7 @@ pub fn mini_max(
             if score < best_score {
                 best_score = score;
                 best_move = Some(mv);
+                best_pv = current_pv.clone();
             }
             if best_score <= alpha {
                 break;
@@ -122,9 +132,10 @@ pub fn mini_max(
                 } else {
                     TranspositionTableEntryType::Exact
                 },
+                pv: best_pv.clone(),
             },
         );
     }
 
-    (best_score, best_move, false)
+    (best_score, best_move, false, best_pv.clone())
 }

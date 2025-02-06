@@ -20,13 +20,16 @@ impl TranspositionTable {
     }
 }
 
+#[derive(Clone)]
 pub struct TranspositionTableEntry {
     pub depth: u8,
     pub score: i32,
     pub best_move: Option<cozy_chess::Move>,
     pub entry_type: TranspositionTableEntryType,
+    pub pv: Vec<cozy_chess::Move>,
 }
 
+#[derive(Clone)]
 pub enum TranspositionTableEntryType {
     Exact,
     LowerBound,

@@ -5,6 +5,7 @@ use crate::uci::uci_command_go::do_uci_command_go;
 use crate::uci::uci_command_isready::do_uci_command_isready;
 use crate::uci::uci_command_perft::do_uci_command_perft;
 use crate::uci::uci_command_position::do_uci_command_position;
+use crate::uci::uci_command_testeval::do_uci_command_testeval;
 use crate::uci::uci_command_uci::do_uci_command_uci;
 
 #[derive(Clone)]
@@ -66,6 +67,7 @@ pub fn do_uci_loop(){
                     handle.join().unwrap();
                 }
             }
+            "testeval" => do_uci_command_testeval(&uci_data),
             "quit" => break,
             _ => {}
         }

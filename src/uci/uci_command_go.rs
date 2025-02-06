@@ -56,6 +56,8 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
     let mut current_depth = 1;
     let mut best_move: Option<Move> = None;
     let mut best_score: Option<i32> = None;
+    let mut best_pv: Option<Vec<Move>> = None;
+    let mut best_pv_string = String::new();
     let timer_handle: Option<std::thread::JoinHandle<()>> = None;
 
     if time > 0 {
@@ -78,7 +80,7 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
             .load(std::sync::atomic::Ordering::SeqCst)
     {
         let new_board = uci_data.board.clone();
-        let (score, mv, early_stop) = mini_max(
+        let (score, mv, early_stop, pv) = mini_max(
             &new_board,
             &mut tt,
             uci_data.current_move_history.clone(),
@@ -97,6 +99,16 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
         if let Some(mv) = mv {
             best_move = Some(mv);
             best_score = Some(score);
+            best_pv = Some(pv);
+
+            // Build the best pv string
+            best_pv_string = String::new();
+            if let Some(pv) = &best_pv {
+                for mv in pv {
+                    best_pv_string.push_str(&format!(" {}", mv));
+                }
+            }
+            best_pv_string = best_pv_string.trim().to_string();
         }
 
         let elapsed_ms = start.elapsed().as_millis();
@@ -107,13 +119,14 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
         };
 
         println!(
-            "info depth {} score cp {} nodes {} nps {} time {} bestmove {}",
+            "info depth {} score cp {} nodes {} nps {} time {} bestmove {} pv {}",
             current_depth,
             best_score.unwrap(),
             node_count,
             nodes_per_s,
             elapsed_ms,
-            best_move.unwrap()
+            best_move.unwrap(),
+            best_pv_string
         );
 
         current_depth += 1;
