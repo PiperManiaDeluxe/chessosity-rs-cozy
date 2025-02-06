@@ -106,24 +106,77 @@ pub fn mini_max(
     let mut best_score = if maximizing { i32::MIN } else { i32::MAX };
     let mut best_move: Option<Move> = None;
 
+    let mut i = 0;
+
     for mv in moves {
         let mut new_board = board.clone();
+        let is_capture = new_board.piece_on(mv.to).is_some();
         let mut new_hash_history = hash_history.clone();
         new_board.play(mv);
         new_hash_history.push(new_board.hash());
 
-        let (score, _, early_stop, child_pv) = mini_max(
-            &new_board,
-            transposition_table,
-            new_hash_history,
-            depth - 1,
-            alpha,
-            beta,
-            distance_from_root + 1,
-            is_playing,
-            node_count,
-            &mut *killer_moves,
-        );
+        let mut needs_full_search = true;
+
+        let mut score = 0;
+        let mut early_stop = false;
+        let mut child_pv = vec![];
+
+        const REDUCE_DEPTH_A: i32 = 1;
+        const REDUCE_DEPTH_B: i32 = 2;
+
+        // Do a shallow search for the later moves
+        if i >= 3 && !is_capture && (depth as i32 - 1 - REDUCE_DEPTH_A) >= 0 {
+            let mut reduce_depth = REDUCE_DEPTH_A;
+
+            if i >= 7 && (depth as i32 - 1 - REDUCE_DEPTH_B) >= 0{
+                // Do an even shallower search fo the even later moves
+                reduce_depth = REDUCE_DEPTH_B
+            }
+
+            let (new_score, _, new_early_stop, new_child_pv) = mini_max(
+                &new_board,
+                transposition_table,
+                new_hash_history,
+                depth - 1 - reduce_depth as u8,
+                alpha,
+                beta,
+                distance_from_root + 1,
+                is_playing,
+                node_count,
+                &mut *killer_moves,
+            );
+
+            score = new_score;
+            early_stop = new_early_stop;
+            child_pv = new_child_pv;
+
+            if maximizing{
+                needs_full_search = new_score > alpha;
+            } else {
+                needs_full_search = new_score < beta;
+            }
+        }
+
+        let mut new_hash_history = hash_history.clone();
+
+        if needs_full_search{
+            let (new_score, _, new_early_stop, new_child_pv) = mini_max(
+                &new_board,
+                transposition_table,
+                new_hash_history,
+                depth - 1,
+                alpha,
+                beta,
+                distance_from_root + 1,
+                is_playing,
+                node_count,
+                &mut *killer_moves,
+            );
+
+            score = new_score;
+            early_stop = new_early_stop;
+            child_pv = new_child_pv;
+        }
 
         if early_stop {
             return (0, None, true, Vec::new());
@@ -170,6 +223,8 @@ pub fn mini_max(
             }
             beta = beta.min(best_score);
         }
+
+        i += 1;
     }
 
     // Determine what kind of bound to store in the TT.
