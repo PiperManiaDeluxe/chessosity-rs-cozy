@@ -2,11 +2,8 @@
 name = "chessosity-rs-cozy"
 # (Major update version).(Evaluation function update version).(Bugfix / patch version)
 # TODO: Update version every commit
-version = "2.0.0"
+version = "3.0.0"
 edition = "2021"
 
 [dependencies]
 cozy-chess = "0.3.4"
-test-log = "0.2.17"
-log = "0.4.25"
-num-format = "0.4.4"
