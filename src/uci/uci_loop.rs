@@ -123,7 +123,7 @@ pub fn do_uci_loop() {
             "testeval" => {
                 do_uci_command_testeval(&uci_data);
             }
-            "quit" => break,
+            "quit" => std::process::exit(0),
             _ => {}
         }
     }

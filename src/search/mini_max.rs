@@ -158,8 +158,6 @@ pub fn mini_max(
             }
         }
 
-        let mut new_hash_history = hash_history.clone();
-
         if needs_full_search{
             let mut new_board = board.clone();
             let mut new_hash_history = hash_history.clone();

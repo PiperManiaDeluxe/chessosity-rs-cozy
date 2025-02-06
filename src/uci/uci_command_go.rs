@@ -117,9 +117,12 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>, transposi
 
             // Build the best pv string
             best_pv_string = String::new();
+            let mut new_board = uci_data.board.clone();
+
             if let Some(pv) = &best_pv {
                 for mv in pv {
-                    best_pv_string.push_str(&format!(" {}", cozy_chess::util::display_uci_move(&uci_data.board, *mv)));
+                    best_pv_string.push_str(&format!(" {}", cozy_chess::util::display_uci_move(&new_board, *mv)));
+                    new_board.play(*mv);
                 }
             }
             best_pv_string = best_pv_string.trim().to_string();
