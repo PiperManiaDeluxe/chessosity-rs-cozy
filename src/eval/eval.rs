@@ -2,6 +2,7 @@
 use crate::eval::eval_count_material::eval_count_material;
 use crate::eval::eval_is_mate::eval_is_mate;
 use crate::eval::eval_mop_up::eval_mop_up;
+use crate::eval::eval_pst::{eval_pst_end, eval_pst_opening};
 use crate::eval::game_phase::get_game_phase;
 
 pub fn eval(board: &Board, distance_from_root: u8) -> i32 {
@@ -15,12 +16,14 @@ pub fn eval(board: &Board, distance_from_root: u8) -> i32 {
 
 pub fn eval_opening(board: &Board, distance_from_root: u8) -> i32 {
     let mut score = eval_count_material(board);
+    score += eval_pst_opening(board);
     score += eval_is_mate(board, distance_from_root);
     score
 }
 
 pub fn eval_endgame(board: &Board, distance_from_root: u8) -> i32 {
     let mut score = eval_count_material(board);
+    score += eval_pst_end(board);
     score += eval_mop_up(board, distance_from_root);
     score += eval_is_mate(board, distance_from_root);
     score

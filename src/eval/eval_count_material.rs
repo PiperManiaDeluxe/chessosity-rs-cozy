@@ -30,8 +30,8 @@ pub fn eval_count_material(board: &Board) -> i32{
 pub fn get_piece_value(piece: Piece) -> i32 {
     match piece {
         Piece::Pawn => 100,
-        Piece::Knight => 300,
-        Piece::Bishop => 300,
+        Piece::Knight => 320,
+        Piece::Bishop => 330,
         Piece::Rook => 500,
         Piece::Queen => 900,
         _ => 0,
