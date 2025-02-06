@@ -1,6 +1,9 @@
 ﻿use crate::eval::eval::eval;
+use crate::search::is_threefold::is_threefold;
 use crate::search::quiescence::quiescence;
-use crate::search::transposition_table::{TranspositionTable, TranspositionTableEntry, TranspositionTableEntryType};
+use crate::search::transposition_table::{
+    TranspositionTable, TranspositionTableEntry, TranspositionTableEntryType,
+};
 use cozy_chess::{Board, Color, GameStatus, Move};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -29,6 +32,9 @@ pub fn mini_max(
 
     if board.status() != GameStatus::Ongoing {
         return (eval(&board, distance_from_root), None, false);
+    }
+    if is_threefold(hash, &hash_history) {
+        return (0, None, false);
     }
     if depth == 0 {
         let score = quiescence(

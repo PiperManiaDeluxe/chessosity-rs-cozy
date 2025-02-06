@@ -4,6 +4,7 @@ use crate::search::transposition_table::TranspositionTable;
 use cozy_chess::{Board, Color, Move, Piece};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use crate::search::is_threefold::is_threefold;
 
 pub fn quiescence(
     board: &Board,
@@ -18,7 +19,16 @@ pub fn quiescence(
         return 0;
     }
 
+    if board.status() != cozy_chess::GameStatus::Ongoing {
+        return eval(board, distance_from_root);
+    }
+
     *node_count += 1;
+
+    let hash = board.hash();
+    if is_threefold(hash, &hash_history) {
+        return 0;
+    }
 
     let stand_pat = eval(board, distance_from_root);
     let maximizing = board.side_to_move() == Color::White;
