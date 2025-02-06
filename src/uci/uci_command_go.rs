@@ -30,7 +30,7 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
             max_depth = 64;
             time = 0;
         } else if tokens[1] == "depth" {
-            max_depth = tokens[1].parse::<u8>().unwrap();
+            max_depth = tokens[2].parse::<u8>().unwrap();
             time = 0;
         } else {
             max_depth = 64;
@@ -51,6 +51,12 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
                 (black_time / 20) + (black_inc / 2)
             };
         }
+    } else {
+        time = if uci_data.board.side_to_move() == Color::White {
+            (white_time / 20) + (white_inc / 2)
+        } else {
+            (black_time / 20) + (black_inc / 2)
+        };
     }
 
     let mut current_depth = 1;
@@ -74,11 +80,18 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
 
     let mut tt = TranspositionTable::new();
 
+    let mut last_time: u64 = 0;
+
     while current_depth <= max_depth
         && uci_data
             .is_playing
             .load(std::sync::atomic::Ordering::SeqCst)
     {
+        // Estimate the next depth will take 10 times longer, if we don't have the time for that stop here to save time during play!
+        if last_time * 10 > time && time > 0 {
+            break;
+        }
+
         let new_board = uci_data.board.clone();
         let (score, mv, early_stop, pv) = mini_max(
             &new_board,
@@ -112,16 +125,31 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>) {
         }
 
         let elapsed_ms = start.elapsed().as_millis();
+        last_time = elapsed_ms as u64;
         let nodes_per_s = if elapsed_ms > 0 {
             (node_count as f64 / elapsed_ms as f64) as u64 * 1000
         } else {
             0
         };
 
+        let mut score_string: String = String::new();
+
+        if best_score.unwrap().abs() < 900_000 {
+            score_string = "cp ".to_string() + &*best_score.unwrap().to_string();
+        } else {
+            let mate_depth = if best_score.unwrap() > 0 {
+                ((1_000_000 - best_score.unwrap()) / 1000) / 2
+            } else {
+                ((best_score.unwrap() + 1_000_000) / 1000) / 2
+            };
+
+            score_string = "mate ".to_string() + &*mate_depth.to_string();
+        }
+
         println!(
-            "info depth {} score cp {} nodes {} nps {} time {} bestmove {} pv {}",
+            "info depth {} score {} nodes {} nps {} time {} bestmove {} pv {}",
             current_depth,
-            best_score.unwrap(),
+            score_string,
             node_count,
             nodes_per_s,
             elapsed_ms,

@@ -28,27 +28,42 @@ pub fn mini_max(
 
     let hash = board.hash();
     if let Some(&ref entry) = transposition_table.get(hash) {
-        if entry.depth >= depth {
-            return (entry.score, entry.best_move, false, entry.pv.clone());
+        if entry.depth >= depth && depth > 0 {
+            match entry.entry_type {
+                TranspositionTableEntryType::Exact => {
+                    // ignore entries that count as mate
+                    if entry.score.abs() < 900_000 {
+                        return (entry.score, entry.best_move, false, entry.pv.clone());
+                    }
+                }
+                TranspositionTableEntryType::LowerBound => alpha = alpha.max(entry.score),
+                TranspositionTableEntryType::UpperBound => beta = beta.min(entry.score)
+            }
         }
     }
 
     if board.status() != GameStatus::Ongoing {
-        return (eval(&board, distance_from_root), None, false, best_pv);
+        return (eval(&board, distance_from_root+1), None, false, best_pv);
     }
     if is_threefold(hash, &hash_history) {
         return (0, None, false, best_pv);
     }
     if depth == 0 {
-        let score = quiescence(
-            board,
-            hash_history,
-            alpha,
-            beta,
-            distance_from_root,
-            is_playing,
-            node_count,
-        );
+        let score = eval(&board, distance_from_root+1);
+
+        if score.abs() < 900000 {
+            let score = quiescence(
+                board,
+                hash_history,
+                alpha,
+                beta,
+                distance_from_root,
+                is_playing,
+                node_count,
+            );
+            return (score, None, false, best_pv);
+        }
+
         return (score, None, false, best_pv);
     }
 
@@ -119,19 +134,24 @@ pub fn mini_max(
     }
 
     if let Some(mv) = best_move {
+        let is_mate = best_score.abs() >= 900_000;
+        let entry_type = if is_mate {
+            TranspositionTableEntryType::Exact
+        } else if best_score <= alpha {
+            TranspositionTableEntryType::LowerBound
+        } else if best_score >= beta {
+            TranspositionTableEntryType::UpperBound
+        } else {
+            TranspositionTableEntryType::Exact
+        };
+
         transposition_table.insert(
             hash,
             TranspositionTableEntry {
                 depth,
                 score: best_score,
                 best_move: Some(mv),
-                entry_type: if best_score <= alpha {
-                    TranspositionTableEntryType::LowerBound
-                } else if best_score >= beta {
-                    TranspositionTableEntryType::UpperBound
-                } else {
-                    TranspositionTableEntryType::Exact
-                },
+                entry_type,
                 pv: best_pv.clone(),
             },
         );
