@@ -81,8 +81,6 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>, transposi
 
     let mut last_time: u64 = 0;
 
-    println!("{}", time);
-
     while current_depth <= max_depth
         && uci_data
         .is_playing
