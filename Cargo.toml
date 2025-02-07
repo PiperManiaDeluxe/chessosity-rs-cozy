@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 cozy-chess = "0.3.4"
+threadpool = "1.8.1"
