@@ -119,6 +119,7 @@ pub fn mini_max(
 
         const REDUCE_DEPTH_A: i32 = 1;
         const REDUCE_DEPTH_B: i32 = 2;
+        const REDUCE_DEPTH_C: i32 = 3;
 
         // Do a shallow search for the later moves
         if i >= 3 && !is_capture && (depth as i32 - 1 - REDUCE_DEPTH_A) >= 0 {
@@ -127,6 +128,10 @@ pub fn mini_max(
             if i >= 7 && (depth as i32 - 1 - REDUCE_DEPTH_B) >= 0{
                 // Do an even shallower search fo the even later moves
                 reduce_depth = REDUCE_DEPTH_B
+            }
+
+            if i >= 10 && (depth as i32 - 1 - REDUCE_DEPTH_C) >= 0{
+                reduce_depth = REDUCE_DEPTH_C
             }
 
             let mut new_board = board.clone();

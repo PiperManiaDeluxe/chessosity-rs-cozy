@@ -47,16 +47,16 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>, transposi
             }
 
             time = if uci_data.board.side_to_move() == Color::White {
-                (white_time / 20) + (white_inc / 2)
+                (white_time / 10) + (white_inc / 2)
             } else {
-                (black_time / 20) + (black_inc / 2)
+                (black_time / 10) + (black_inc / 2)
             };
         }
     } else {
         time = if uci_data.board.side_to_move() == Color::White {
-            (white_time / 20) + (white_inc / 2)
+            (white_time / 10) + (white_inc / 2)
         } else {
-            (black_time / 20) + (black_inc / 2)
+            (black_time / 10) + (black_inc / 2)
         };
     }
 
@@ -81,13 +81,15 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>, transposi
 
     let mut last_time: u64 = 0;
 
+    println!("{}", time);
+
     while current_depth <= max_depth
         && uci_data
         .is_playing
         .load(std::sync::atomic::Ordering::SeqCst)
     {
-        // Estimate the next depth will take 10 times longer, if we don't have the time for that stop here to save time during play!
-        if last_time * 10 > time && time > 0 {
+        // Estimate the next depth will take 5 times longer, if we don't have the time for that stop here to save time during play!
+        if last_time * 5 > time && time > 0 {
             break;
         }
 
