@@ -52,7 +52,7 @@ pub fn do_uci_loop() {
         let shared_tt_clone = Arc::clone(&shared_tt);
         std::thread::spawn(move || {
             // Create the table (this may be an expensive operation).
-            let table = TranspositionTable::new(134217728);
+            let table = TranspositionTable::new(33554432);
             // Lock the mutex and store the table.
             let mut lock = shared_tt_clone.table.lock().unwrap();
             *lock = Some(table);
@@ -131,7 +131,7 @@ pub fn do_uci_loop() {
                     let shared_tt_clone = Arc::clone(&shared_tt);
                     std::thread::spawn(move || {
                         // Create the table (this may be an expensive operation).
-                        let table = TranspositionTable::new(134217728);
+                        let table = TranspositionTable::new(33554432);
                         // Lock the mutex and store the table.
                         let mut lock = shared_tt_clone.table.lock().unwrap();
                         *lock = Some(table);
