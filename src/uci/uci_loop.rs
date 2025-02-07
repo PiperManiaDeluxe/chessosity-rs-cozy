@@ -123,6 +123,34 @@ pub fn do_uci_loop() {
             "testeval" => {
                 do_uci_command_testeval(&uci_data);
             }
+            "ucinewgame" => {
+                // Spawn a thread that initializes the transposition table.
+                {
+                    let mut lock = shared_tt.table.lock().unwrap();
+                    *lock = None;
+                    let shared_tt_clone = Arc::clone(&shared_tt);
+                    std::thread::spawn(move || {
+                        // Create the table (this may be an expensive operation).
+                        let table = TranspositionTable::new(134217728);
+                        // Lock the mutex and store the table.
+                        let mut lock = shared_tt_clone.table.lock().unwrap();
+                        *lock = Some(table);
+                        // Notify all threads waiting for the table.
+                        shared_tt_clone.condvar.notify_all();
+                    });
+                }
+
+                // Wait for that thread to finish
+                let mut lock = shared_tt.table.lock().unwrap();
+                while lock.is_none() {
+                    lock = shared_tt.condvar.wait(lock).unwrap();
+                }
+
+                uci_data.board = Board::default();
+                uci_data.current_move_history = vec![uci_data.board.hash()];
+
+                println!("readyok");
+            }
             "quit" => std::process::exit(0),
             _ => {}
         }
