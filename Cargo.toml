@@ -1,8 +1,8 @@
 [package]
 name = "chessosity-rs-cozy"
-# (Major update version).(Evaluation function update version).(Bugfix / patch version)
+# (Major update version).(Evaluation / search function update version).(Bugfix / patch version)
 # TODO: Update version every commit
-version = "3.4.1"
+version = "3.5.0"
 edition = "2021"
 
 [dependencies]
