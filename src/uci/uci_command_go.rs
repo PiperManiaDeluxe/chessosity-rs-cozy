@@ -91,6 +91,8 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>, transposi
             break;
         }
 
+        let depth_start = Instant::now();
+
         let mut killer_moves: HashMap<u8, Vec<Move>> = HashMap::new();
         let new_board = uci_data.board.clone();
         let (score, mv, early_stop, pv) = mini_max(
@@ -129,7 +131,7 @@ pub fn do_uci_command_go(uci_data: &mut UciData, tokens: &Vec<String>, transposi
         }
 
         let elapsed_ms = start.elapsed().as_millis();
-        last_time = elapsed_ms as u64;
+        last_time = depth_start.elapsed().as_millis() as u64;
         let nodes_per_s = if elapsed_ms > 0 {
             (node_count as f64 / elapsed_ms as f64) as u64 * 1000
         } else {
