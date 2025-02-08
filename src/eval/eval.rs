@@ -22,13 +22,13 @@ pub fn eval(board: &Board, distance_from_root: u8) -> i32 {
 pub fn eval_opening(board: &Board, distance_from_root: u8) -> i32 {
     let mut score = eval_count_material_opening(board);
     score += eval_pst_opening(board) / 2;
-    score += eval_pawn_structure(board);
+    //score += eval_pawn_structure(board);
     score
 }
 
 pub fn eval_endgame(board: &Board, distance_from_root: u8) -> i32 {
     let mut score = eval_count_material_end(board);
     score += eval_pst_end(board) / 2;
-    score += eval_pawn_structure(board);
+    //score += eval_pawn_structure(board);
     score
 }
