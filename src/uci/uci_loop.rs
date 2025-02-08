@@ -13,6 +13,9 @@ pub struct UciData {
     pub board: Board,
     pub current_move_history: Vec<u64>,
     pub is_playing: Arc<AtomicBool>,
+
+    // UCI OPTIONS
+    pub hash_size: u64 // Max amount of TT entries to store, higher = faster search but more RAM usage
 }
 
 impl UciData {
@@ -21,6 +24,7 @@ impl UciData {
             board: Board::default(),
             current_move_history: vec![Board::default().hash()],
             is_playing: Arc::new(AtomicBool::new(false)),
+            hash_size: 33554432
         }
     }
 }
@@ -52,7 +56,7 @@ pub fn do_uci_loop() {
         let shared_tt_clone = Arc::clone(&shared_tt);
         std::thread::spawn(move || {
             // Create the table (this may be an expensive operation).
-            let table = TranspositionTable::new(33554432);
+            let table = TranspositionTable::new(uci_data.hash_size as usize);
             // Lock the mutex and store the table.
             let mut lock = shared_tt_clone.table.lock().unwrap();
             *lock = Some(table);
@@ -131,7 +135,7 @@ pub fn do_uci_loop() {
                     let shared_tt_clone = Arc::clone(&shared_tt);
                     std::thread::spawn(move || {
                         // Create the table (this may be an expensive operation).
-                        let table = TranspositionTable::new(33554432);
+                        let table = TranspositionTable::new(uci_data.hash_size as usize);
                         // Lock the mutex and store the table.
                         let mut lock = shared_tt_clone.table.lock().unwrap();
                         *lock = Some(table);
@@ -150,6 +154,37 @@ pub fn do_uci_loop() {
                 uci_data.current_move_history = vec![uci_data.board.hash()];
 
                 println!("readyok");
+            }
+            "setoption" => {
+                if tokens.len() < 5 {
+                    continue;
+                }
+                if tokens[1] == "name" && tokens[3] == "value"{
+                    let option_name = tokens[2].as_str();
+
+                    match option_name {
+                        "hash_size" => {
+                            uci_data.hash_size = tokens[4].parse::<u64>().unwrap();
+
+                            // Spawn a thread that initializes the transposition table.
+                            {
+                                let mut lock = shared_tt.table.lock().unwrap();
+                                *lock = None;
+                                let shared_tt_clone = Arc::clone(&shared_tt);
+                                std::thread::spawn(move || {
+                                    // Create the table (this may be an expensive operation).
+                                    let table = TranspositionTable::new(uci_data.hash_size as usize);
+                                    // Lock the mutex and store the table.
+                                    let mut lock = shared_tt_clone.table.lock().unwrap();
+                                    *lock = Some(table);
+                                    // Notify all threads waiting for the table.
+                                    shared_tt_clone.condvar.notify_all();
+                                });
+                            }
+                        }
+                        _ => {}
+                    }
+                }
             }
             "quit" => std::process::exit(0),
             _ => {}
