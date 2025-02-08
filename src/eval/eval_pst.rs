@@ -15,19 +15,19 @@ pub fn eval_pst_opening(board: &Board) -> i32 {
     let mut score: i32 = 0;
 
     for pawn in white_pawns {
-        score += PAWN_OPENING_PST[pawn as usize];
+        score += PAWN_OPENING_PST[63 - pawn as usize];
     }
     for knight in white_knights {
-        score += KNIGHT_OPENING_PST[knight as usize];
+        score += KNIGHT_OPENING_PST[63 - knight as usize];
     }
     for bishop in white_bishops {
-        score += BISHOP_OPENING_PST[bishop as usize];
+        score += BISHOP_OPENING_PST[63 - bishop as usize];
     }
     for rook in white_rooks {
-        score += ROOK_OPENING_PST[rook as usize];
+        score += ROOK_OPENING_PST[63 - rook as usize];
     }
     for queen in white_queens {
-        score += QUEEN_OPENING_PST[queen as usize];
+        score += QUEEN_OPENING_PST[63 - queen as usize];
     }
 
     for pawn in black_pawns {
@@ -49,7 +49,7 @@ pub fn eval_pst_opening(board: &Board) -> i32 {
     let white_king = board.king(Color::White);
     let black_king = board.king(Color::Black);
 
-    score += KING_OPENING_PST[white_king as usize];
+    score += KING_OPENING_PST[63 - white_king as usize];
     score -= KING_OPENING_PST[black_king as usize];
 
     score
@@ -70,35 +70,35 @@ pub fn eval_pst_end(board: &Board) -> i32 {
     let mut score: i32 = 0;
 
     for pawn in white_pawns {
-        score += PAWN_OPENING_PST[pawn as usize];
+        score += PAWN_OPENING_PST[63 - pawn as usize];
     }
     for knight in white_knights {
-        score += KNIGHT_OPENING_PST[knight as usize];
+        score += KNIGHT_OPENING_PST[63 - knight as usize];
     }
     for bishop in white_bishops {
-        score += BISHOP_OPENING_PST[bishop as usize];
+        score += BISHOP_OPENING_PST[63 - bishop as usize];
     }
     for rook in white_rooks {
-        score += ROOK_OPENING_PST[rook as usize];
+        score += ROOK_OPENING_PST[63 - rook as usize];
     }
     for queen in white_queens {
-        score += QUEEN_OPENING_PST[queen as usize];
+        score += QUEEN_OPENING_PST[63 - queen as usize];
     }
 
     for pawn in black_pawns {
-        score -= PAWN_OPENING_PST[63 - pawn as usize];
+        score -= PAWN_OPENING_PST[pawn as usize];
     }
     for knight in black_knights {
-        score -= KNIGHT_OPENING_PST[63 - knight as usize];
+        score -= KNIGHT_OPENING_PST[knight as usize];
     }
     for bishop in black_bishops {
-        score -= BISHOP_OPENING_PST[63 - bishop as usize];
+        score -= BISHOP_OPENING_PST[bishop as usize];
     }
     for rook in black_rooks {
-        score -= ROOK_OPENING_PST[63 - rook as usize];
+        score -= ROOK_OPENING_PST[rook as usize];
     }
     for queen in black_queens {
-        score -= QUEEN_OPENING_PST[63 - queen as usize];
+        score -= QUEEN_OPENING_PST[queen as usize];
     }
 
     let white_king = board.king(Color::White);
