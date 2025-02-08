@@ -24,7 +24,7 @@ impl UciData {
             board: Board::default(),
             current_move_history: vec![Board::default().hash()],
             is_playing: Arc::new(AtomicBool::new(false)),
-            hash_size: 16777216
+            hash_size: 1048576
         }
     }
 }
