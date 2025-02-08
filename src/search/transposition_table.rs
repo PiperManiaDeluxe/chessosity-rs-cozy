@@ -36,6 +36,10 @@ impl TranspositionTable {
         }
     }
 
+    pub fn len(&mut self) -> usize {
+        self.table.len()
+    }
+
     pub fn clear(&mut self){
         self.table.iter_mut().for_each(|e| *e = None);
     }
