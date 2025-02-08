@@ -1,5 +1,5 @@
 ﻿use crate::eval::eval::eval;
-use crate::eval::eval_count_material::get_piece_value_opening;
+use crate::eval::eval_count_material::get_piece_value;
 use crate::search::transposition_table::TranspositionTable;
 use cozy_chess::{Board, Color, Move, Piece};
 use std::sync::atomic::AtomicBool;
@@ -59,7 +59,7 @@ pub fn quiescence(
     // Sort moves by capture value
     moves.sort_by_cached_key(|mv| {
         let target = board.piece_on(mv.to).unwrap_or(Piece::Pawn);
-        -get_piece_value_opening(target) // Negative for descending sort
+        -get_piece_value(target) // Negative for descending sort
     });
 
     for mv in moves {

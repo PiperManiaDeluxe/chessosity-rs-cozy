@@ -1,4 +1,4 @@
-﻿use crate::eval::eval_count_material::get_piece_value_opening;
+﻿use crate::eval::eval_count_material::get_piece_value;
 use cozy_chess::{BitBoard, Board, Move};
 use std::collections::{HashMap, HashSet};
 
@@ -28,8 +28,8 @@ pub fn move_order_score(board: &Board, mv: &Move, killer_moves: &HashSet<Move>) 
 
     // If the move is a capture add a bonus
     if let Some(captured_piece) = board.piece_on(mv.to) {
-        let victim_value = get_piece_value_opening(captured_piece);
-        let attacker_value = get_piece_value_opening(board.piece_on(mv.from).unwrap());
+        let victim_value = get_piece_value(captured_piece);
+        let attacker_value = get_piece_value(board.piece_on(mv.from).unwrap());
         score += victim_value * 10 - attacker_value;
     }
 
