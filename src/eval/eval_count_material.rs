@@ -24,14 +24,6 @@ pub fn eval_count_material(board: &Board) -> i32{
     score -= black_rooks.len() as i32 * get_piece_value(Piece::Rook);
     score -= black_queens.len() as i32 * get_piece_value(Piece::Queen);
 
-    // Bishop pair bonus
-    if white_bishops.len() >= 2 {
-        score += 50;
-    }
-    if black_bishops.len() >= 2 {
-        score -= 50;
-    }
-
     score
 }
 
